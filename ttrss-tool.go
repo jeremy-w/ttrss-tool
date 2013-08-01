@@ -43,15 +43,8 @@ func init() {
 	flag.StringVar(&flagUser, "user", "admin", "user to connect as")
 	flag.StringVar(&flagPass, "pass", "password", "password to use")
 
-	if !strings.HasPrefix(flagAddr, "http") {
-		fmt.Fprintf(os.Stderr,
-			"%s: error: address %q must start with \"http\"\n",
-			os.Args[0], flagAddr)
-		os.Exit(EX_USAGE)
-	}
-
-	for k, v := range cmds {
-		v.Flag.Init(k, flag.PanicOnError)
+	for name, cmd := range cmds {
+		cmd.Flag.Init(name, flag.PanicOnError)
 	}
 }
 
@@ -63,5 +56,11 @@ func main() {
 		os.Exit(EX_USAGE)
 	}
 
+	if !strings.HasPrefix(flagAddr, "http") {
+		fmt.Fprintf(os.Stderr,
+			"%s: error: address %q must start with \"http\"\n",
+			os.Args[0], flagAddr)
+		os.Exit(EX_USAGE)
+	}
 	fmt.Println(flagAddr, flagUser, flagPass, flag.Args())
 }
