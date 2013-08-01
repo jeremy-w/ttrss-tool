@@ -9,6 +9,7 @@ import (
 	"os"
 	"strings"
 )
+
 var _ = http.StatusContinue
 
 // Exit Codes
@@ -25,14 +26,14 @@ var (
 
 type Cmd struct {
 	Flag flag.FlagSet
-	Run func(cmd *Cmd, args []string)
+	Run  func(cmd *Cmd, args []string)
 }
 
 func runList(cmd *Cmd, args []string) {
 	fmt.Println("RUNNING LIST")
 }
 
-var cmds = map[string]Cmd {
+var cmds = map[string]Cmd{
 	"ls": {flag.FlagSet{}, runList},
 }
 
@@ -44,7 +45,7 @@ func init() {
 
 	if !strings.HasPrefix(flagAddr, "http") {
 		fmt.Fprintf(os.Stderr,
-		"%s: error: address %q must start with \"http\"\n",
+			"%s: error: address %q must start with \"http\"\n",
 			os.Args[0], flagAddr)
 		os.Exit(EX_USAGE)
 	}
