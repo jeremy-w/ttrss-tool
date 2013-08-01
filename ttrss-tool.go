@@ -1,5 +1,5 @@
 // vi: set noet ts=4 sw=4 ft=go tw=79:
-/* tt manipulates tiny-tiny-rss subscriptions. */
+/* ttrss-tool manipulates tiny-tiny-rss subscriptions. */
 package main
 
 import (
@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 )
 var _ = http.StatusContinue
 
@@ -40,6 +41,13 @@ func init() {
 		"address (example: https://example.com/tt-rss/)")
 	flag.StringVar(&flagUser, "user", "admin", "user to connect as")
 	flag.StringVar(&flagPass, "pass", "password", "password to use")
+
+	if !strings.HasPrefix(flagAddr, "http") {
+		fmt.Fprintf(os.Stderr,
+		"%s: error: address %q must start with \"http\"\n",
+			os.Args[0], flagAddr)
+		os.Exit(EX_USAGE)
+	}
 
 	for k, v := range cmds {
 		v.Flag.Init(k, flag.PanicOnError)
