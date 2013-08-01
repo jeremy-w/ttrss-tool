@@ -4,7 +4,7 @@ account is subscribed to. It communicates with your tt-rss server using the
 [tt-rss API](tt-rss.org/redmine/projects/tt-rss/wiki/JsonApiReference).
 
 `ttrss-tool` was developed by [Jeremy W. Sherman](https://jeremywsherman.com)
-and lives at [jeremy-w/tt](https://github.com/jeremy-w/tt).
+and lives at [jeremy-w/ttrss-tool](https://github.com/jeremy-w/ttrss-tool).
 
 `ttrss-tool` goes great with [Newsbeuter](http://newsbeuter.org/).
 
