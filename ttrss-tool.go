@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"sort"
 	"strings"
 )
 
@@ -52,6 +53,9 @@ func main() {
 	flag.Parse()
 
 	if flag.NArg() < 1 {
+		fmt.Fprintf(os.Stderr,
+			"%s: error: expected at least 1 argument\n",
+			os.Args[0])
 		flag.Usage()
 		os.Exit(EX_USAGE)
 	}
@@ -62,5 +66,26 @@ func main() {
 			os.Args[0], flagAddr)
 		os.Exit(EX_USAGE)
 	}
-	fmt.Println(flagAddr, flagUser, flagPass, flag.Args())
+
+	requestedName := flag.Arg(0)
+	var chosenCmd *Cmd
+	for name, cmd := range cmds {
+		if name == requestedName {
+			chosenCmd = &cmd
+			break
+		}
+	}
+	if chosenCmd == nil {
+		availableCommands := make([]string, len(cmds))
+		for name := range cmds {
+			availableCommands = append(availableCommands, name)
+		}
+		sort.Strings(availableCommands)
+
+		fmt.Fprintf(os.Stderr,
+			"%s: error: unknown command %q: expected one of %v\n",
+			os.Args[0], requestedName, availableCommands)
+		os.Exit(EX_USAGE)
+	}
+	chosenCmd.Run(chosenCmd, flag.Args())
 }
