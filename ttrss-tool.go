@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"sort"
@@ -25,17 +26,15 @@ var (
 	flagPass string
 )
 
-type Cmd struct {
-	Flag flag.FlagSet
-	Run  func(cmd *Cmd, args []string)
-}
-
-func runList(cmd *Cmd, args []string) {
-	fmt.Println("RUNNING LIST")
+type Cmd interface {
+	Init()
+	Synopsis(w io.Writer)
+	Help(w io.Writer)
+	Run(args []string)
 }
 
 var cmds = map[string]Cmd{
-	"ls": {flag.FlagSet{}, runList},
+	"ls": &Ls{},
 }
 
 func init() {
@@ -44,8 +43,22 @@ func init() {
 	flag.StringVar(&flagUser, "user", "admin", "user to connect as")
 	flag.StringVar(&flagPass, "pass", "password", "password to use")
 
-	for name, cmd := range cmds {
-		cmd.Flag.Init(name, flag.PanicOnError)
+	for _, cmd := range cmds {
+		cmd.Init()
+	}
+
+	flag.Usage = func() {
+		name := os.Args[0]
+		w := os.Stderr
+
+		fmt.Fprintln(w,
+			"Usage of ", name, ": ", name, "flags subcommand subflags subargs")
+		flag.PrintDefaults()
+		fmt.Fprintln(w, "Subcommands:")
+		for _, cmd := range cmds {
+			fmt.Fprint(w, "  ")
+			cmd.Synopsis(w)
+		}
 	}
 }
 
@@ -68,10 +81,10 @@ func main() {
 	}
 
 	requestedName := flag.Arg(0)
-	var chosenCmd *Cmd
+	var chosenCmd Cmd
 	for name, cmd := range cmds {
 		if name == requestedName {
-			chosenCmd = &cmd
+			chosenCmd = cmd
 			break
 		}
 	}
@@ -87,5 +100,41 @@ func main() {
 			os.Args[0], requestedName, availableCommands)
 		os.Exit(EX_USAGE)
 	}
-	chosenCmd.Run(chosenCmd, flag.Args())
+	chosenCmd.Run(flag.Args()[1:])
+}
+
+type Ls struct {
+	flHelp bool
+	flRecurse bool
+	flags flag.FlagSet
+}
+
+func (ls *Ls) Init() {
+	ls.flags.Init("ls", flag.PanicOnError)
+
+	ls.flags.BoolVar(&ls.flHelp, "h", false, "help")
+	ls.flags.BoolVar(&ls.flHelp, "help", false, "help")
+
+	recurseUsage := "recurse into categories"
+	ls.flags.BoolVar(&ls.flRecurse, "R", false, recurseUsage)
+	ls.flags.BoolVar(&ls.flRecurse, "Recurse", false, recurseUsage)
+}
+
+func (ls *Ls) Synopsis(w io.Writer) {
+	fmt.Fprintln(w, "ls -- list categories and feeds")
+}
+
+func (ls *Ls) Help(w io.Writer) {
+	fmt.Fprintln(w, "Usage of ls:")
+	ls.flags.SetOutput(w)
+	ls.flags.PrintDefaults()
+}
+
+func (ls *Ls) Run(args []string) {
+	_ = ls.flags.Parse(args)
+	if ls.flHelp {
+		ls.Help(os.Stdout)
+		return
+	}
+	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
 }
