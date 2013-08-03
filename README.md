@@ -24,6 +24,17 @@ ttrss as the backend, and thus was `ttrss-tool` born.)
 - `ttrss-tool rm feedID`
   removes the feed with the specified ID from your subscriptions.
 
+## Authentication
+Currently, `ttrss-tool` requires three flags on all invocations:
+
+- `-u,--user`: the user name
+- `-p,--pass`: the password
+- `-a,--addr`: the address of your ttrss instance, like
+  `https://example.org/ttrss`
+
+These are flags for now, but are likely to migrate into a dotfile sooner
+rather than later, because whoah too much boring prefatory typing.
+
 ## Printing Categories and Feeds
 **TODO:** Describe how feeds and categories are displayed, and what the fields
 mean.
