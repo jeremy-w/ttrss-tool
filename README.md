@@ -1,7 +1,7 @@
 # TinyTinyRSS Tool
 `ttrss-tool` makes it easy to view and manipulate the feeds your Tiny Tiny RSS
 account is subscribed to. It communicates with your tt-rss server using the
-[tt-rss API](tt-rss.org/redmine/projects/tt-rss/wiki/JsonApiReference).
+[tt-rss API](http://tt-rss.org/redmine/projects/tt-rss/wiki/JsonApiReference).
 
 `ttrss-tool` was developed by [Jeremy W. Sherman](https://jeremywsherman.com)
 and lives at [jeremy-w/ttrss-tool](https://github.com/jeremy-w/ttrss-tool).
