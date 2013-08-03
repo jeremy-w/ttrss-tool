@@ -7,13 +7,14 @@ account is subscribed to. It communicates with your tt-rss server using the
 and lives at [jeremy-w/ttrss-tool](https://github.com/jeremy-w/ttrss-tool).
 
 `ttrss-tool` goes great with [Newsbeuter](http://newsbeuter.org/).
+(It seemed a shame to have to hit the Web to edit your feedlist when using
+ttrss as the backend, and thus was `ttrss-tool` born.)
 
-## Basic Idea
-- `ttrss-tool ls`
-  lists categories (suffixed with '/'), special categories (suffixed with '%'),
-  and feeds (no suffix) and virtual feeds (suffixed with '@') at that level.
+## Usage
+- `ttrss-tool ls` (short for `ls /`)
+  lists top-level categories and uncategorized feeds.
 - `ttrss-tool ls /category`
-  lists subcategories and feeds in that category.
+  lists the categories and feeds directly under that category.
 - `ttrss-tool ls -R`
   recursively lists categories and feeds.
 - `ttrss-tool mkdir /category`
@@ -22,3 +23,7 @@ and lives at [jeremy-w/ttrss-tool](https://github.com/jeremy-w/ttrss-tool).
   links a new feed into the specified category.
 - `ttrss-tool rm feedID`
   removes the feed with the specified ID from your subscriptions.
+
+## Printing Categories and Feeds
+**TODO:** Describe how feeds and categories are displayed, and what the fields
+mean.
