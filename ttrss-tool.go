@@ -16,6 +16,7 @@ var _ = http.StatusContinue
 
 // Exit Codes
 const (
+	EX_SUCCESS = 0
 	EX_USAGE = 64
 )
 
@@ -32,8 +33,8 @@ type Cmd interface {
 	// It is called during program init().
 	Init()
 
-	// Synopsis should print two spaces, the command name, a one-line
-	// description, and a final newline.
+	// Synopsis should print a message like "cmd -- does blah".
+	// The printed text should end with a newline.
 	Synopsis(w io.Writer)
 
 	// Run is called by main() on the chosen subcommand.
@@ -43,6 +44,7 @@ type Cmd interface {
 }
 
 var cmds = map[string]Cmd{
+	"ln": &Ln{},
 	"ls": &Ls{},
 }
 
@@ -60,8 +62,8 @@ func init() {
 		name := os.Args[0]
 		w := os.Stderr
 
-		fmt.Fprintln(w,
-			"Usage of ", name, ": ", name, "flags subcommand subflags subargs")
+		fmt.Fprintf(w,
+			"Usage of %s: %s flags subcommand subflags subargs\n", name, name)
 		flag.PrintDefaults()
 		fmt.Fprintln(w, "Subcommands:")
 		for _, cmd := range cmds {
@@ -113,9 +115,44 @@ func main() {
 }
 
 func FlagSetPrintUsage(fl flag.FlagSet, w io.Writer, progname string) {
-	fmt.Fprintln(w, "Usage of ", progname, ":")
+	fmt.Fprintf(w, "Usage of %s:\n", progname)
 	fl.SetOutput(w)
 	fl.PrintDefaults()
+}
+
+type Ln struct {
+	flHelp bool
+	flags flag.FlagSet
+}
+
+func (ln *Ln) Init() {
+	ln.flags.Init("ln", flag.PanicOnError)
+
+	ln.flags.BoolVar(&ln.flHelp, "h", false, "help")
+	ln.flags.BoolVar(&ln.flHelp, "help", false, "help")
+}
+
+func (ln *Ln) Synopsis(w io.Writer) {
+	fmt.Println("ln feed [catpath] -- subscribes to a new feed")
+}
+
+func (ln *Ln) Run(args []string) {
+	ln.flags.Parse(args)
+
+	if ln.flHelp {
+		FlagSetPrintUsage(ln.flags, os.Stdout, "ln")
+		os.Exit(EX_SUCCESS)
+	}
+
+	argc := ln.flags.NArg()
+	if argc < 1 {
+		FlagSetPrintUsage(ln.flags, os.Stderr, "ln")
+		os.Exit(EX_USAGE)
+	}
+
+	feed := ln.flags.Arg(0)
+	catpath := ln.flags.Arg(1)
+	fmt.Println("ln", feed, catpath)
 }
 
 type Ls struct {
@@ -136,7 +173,7 @@ func (ls *Ls) Init() {
 }
 
 func (ls *Ls) Synopsis(w io.Writer) {
-	fmt.Fprintln(w, "ls -- list categories and feeds")
+	fmt.Fprintln(w, "ls [-R] [catpath...] -- list categories and feeds")
 }
 
 func (ls *Ls) Run(args []string) {
