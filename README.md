@@ -10,12 +10,15 @@ and lives at [jeremy-w/ttrss-tool](https://github.com/jeremy-w/ttrss-tool).
 
 ## Basic Idea
 - `ttrss-tool ls`
-  lists categories (suffixed with `/`) and feeds without categories.
+  lists categories (suffixed with '/'), special categories (suffixed with '%'),
+  and feeds (no suffix) and virtual feeds (suffixed with '@') at that level.
 - `ttrss-tool ls /category`
   lists subcategories and feeds in that category.
 - `ttrss-tool ls -R`
   recursively lists categories and feeds.
-- `ttrss-tool cp feedurl /category`
-  adds the feed to the category. (Mnemonic: "copy".)
+- `ttrss-tool mkdir /category`
+  adds a new, empty (sub)category.
+- `ttrss-tool ln feedurl /category`
+  links a new feed into the specified category.
 - `ttrss-tool rm feedID`
   removes the feed with the specified ID from your subscriptions.
