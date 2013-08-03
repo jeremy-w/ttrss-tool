@@ -21,7 +21,7 @@ ttrss as the backend, and thus was `ttrss-tool` born.)
   adds a new, empty (sub)category.
 - `ttrss-tool ln feedurl /category`
   links a new feed into the specified category.
-- `ttrss-tool rm feedID`
+- `ttrss-tool rm feed`
   removes the feed with the specified ID from your subscriptions.
 
 ## Authentication
