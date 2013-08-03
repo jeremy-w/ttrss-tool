@@ -26,10 +26,19 @@ var (
 	flagPass string
 )
 
+// Cmd is how main interacts with the subcommands.
 type Cmd interface {
+	// Init is used to configure any flags.
+	// It is called during program init().
 	Init()
+
+	// Synopsis should print two spaces, the command name, a one-line
+	// description, and a final newline.
 	Synopsis(w io.Writer)
-	Help(w io.Writer)
+
+	// Run is called by main() on the chosen subcommand.
+	// args contains the arguments to the subcommand (not including the
+	// subcommand name).
 	Run(args []string)
 }
 
@@ -103,6 +112,12 @@ func main() {
 	chosenCmd.Run(flag.Args()[1:])
 }
 
+func FlagSetPrintUsage(fl flag.FlagSet, w io.Writer, progname string) {
+	fmt.Fprintln(w, "Usage of ", progname, ":")
+	fl.SetOutput(w)
+	fl.PrintDefaults()
+}
+
 type Ls struct {
 	flHelp bool
 	flRecurse bool
@@ -124,16 +139,10 @@ func (ls *Ls) Synopsis(w io.Writer) {
 	fmt.Fprintln(w, "ls -- list categories and feeds")
 }
 
-func (ls *Ls) Help(w io.Writer) {
-	fmt.Fprintln(w, "Usage of ls:")
-	ls.flags.SetOutput(w)
-	ls.flags.PrintDefaults()
-}
-
 func (ls *Ls) Run(args []string) {
 	_ = ls.flags.Parse(args)
 	if ls.flHelp {
-		ls.Help(os.Stdout)
+		FlagSetPrintUsage(ls.flags, os.Stdout, "ls")
 		return
 	}
 	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
