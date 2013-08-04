@@ -25,15 +25,33 @@ ttrss as the backend, and thus was `ttrss-tool` born.)
   removes the feed with the specified ID from your subscriptions.
 
 ## Authentication
-Currently, `ttrss-tool` requires three flags on all invocations:
+`ttrss-tool` requires three pieces of information to operate:
 
-- `-u,--user`: the user name
-- `-p,--pass`: the password
+- The address of your ttrss instance, such as `https://example.com/ttrss/`.
+- Your account name on that instance.
+- Your password.
+
+You can supply this info by creating a dotfile `.ttrss-tool` in
+`$XDG_CONFIG_HOME` (default: `$HOME/.config`) like:
+
+```json
+{
+  "addr": "https://example.com/ttrss/",
+  "user": "alice",
+  "pass": "keepoutmallory"
+}
+```
+
+You can also supply this information as commandline flags:
+
 - `-a,--addr`: the address of your ttrss instance, like
   `https://example.org/ttrss`
+- `-u,--user`: the user name
+- `-p,--pass`: the password
 
-These are flags for now, but are likely to migrate into a dotfile sooner
-rather than later, because whoah too much boring prefatory typing.
+If both dotfile and commandline flags are present, then the flags win.
+
+NOTE: The dotfile is just a JSON version of the commandline flags.
 
 ## Printing Categories and Feeds
 **TODO:** Describe how feeds and categories are displayed, and what the fields
