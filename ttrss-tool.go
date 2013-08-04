@@ -31,9 +31,9 @@ const (
 
 // General Flags
 var (
-	flagAddr string
-	flagUser string
-	flagPass string
+	flAddr string
+	flUser string
+	flPass string
 )
 
 // Cmd is how main interacts with the subcommands.
@@ -58,10 +58,10 @@ var cmds = map[string]Cmd{
 }
 
 func init() {
-	flag.StringVar(&flagAddr, "addr", "",
+	flag.StringVar(&flAddr, "addr", "",
 		"address (example: https://example.com/tt-rss/)")
-	flag.StringVar(&flagUser, "user", "admin", "user to connect as")
-	flag.StringVar(&flagPass, "pass", "password", "password to use")
+	flag.StringVar(&flUser, "user", "admin", "user to connect as")
+	flag.StringVar(&flPass, "pass", "password", "password to use")
 
 	for _, cmd := range cmds {
 		cmd.Init()
@@ -93,10 +93,10 @@ func main() {
 		os.Exit(EX_USAGE)
 	}
 
-	if !strings.HasPrefix(flagAddr, "http") {
+	if !strings.HasPrefix(flAddr, "http") {
 		fmt.Fprintf(os.Stderr,
 			"%s: error: address %q must start with \"http\"\n",
-			os.Args[0], flagAddr)
+			os.Args[0], flAddr)
 		os.Exit(EX_USAGE)
 	}
 
@@ -164,14 +164,12 @@ func (ln *Ln) Run(args []string) {
 
 	loginMap := map[string]string {
 		"op": "login",
-		"user": flagUser,
+		"user": flUser,
 		"password": flagPass,
 	}
 	loginBuffer := asJSONBuffer(loginMap)
 
-	apiEP := flagAddr
-	if !strings.HasSuffix(apiEP, "/") {
-		apiEP += "/"
+	apiEP := flAddr
 	}
 	apiEP += "api/"
 
@@ -205,7 +203,7 @@ func (ln *Ln) Run(args []string) {
 				msg += ": " + errorText
 			}
 		}
-		log.Fatalf(msg, apiEP, flagUser)
+		log.Fatalf(msg, apiEP, flUser)
 	}
 	fmt.Println("sessionID", sessionID, feed, catpath)
 }
