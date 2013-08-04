@@ -4,14 +4,16 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io"
-	"encoding/json"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
+	"path"
 	"sort"
 	"strings"
 )
@@ -56,6 +58,40 @@ type Cmd interface {
 var cmds = map[string]Cmd{
 	"ln": &Ln{},
 	"ls": &Ls{},
+}
+
+func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
+	home := os.Getenv("HOME")
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" { dir = path.Join(home, ".config") }
+	dirs := []string{dir}
+
+	dirsString := os.Getenv("XDG_CONFIG_DIRS")
+	if dirsString != "" {
+		moreDirs := strings.Split(dirsString, ":")
+		dirs = append(dirs, moreDirs...)
+	}
+
+	fallbackPath := ""
+	for _, dir := range dirs {
+		if !strings.HasPrefix(dir, "/") { continue }
+		if _, err := os.Stat(dir); err != nil {
+			continue
+		}
+		path := path.Join(dir, subpath)
+		if fallbackPath == "" {
+			fallbackPath = path
+		}
+		_, err := os.Stat(path)
+		if err == nil {
+			return path
+		}
+	}
+
+	if onlyIfExists {
+		return ""
+	}
+	return fallbackPath
 }
 
 func init() {
