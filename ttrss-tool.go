@@ -174,7 +174,7 @@ type TTRSSResp struct {
 // error message, and the call does not return.
 func (tt *TTRSSClient) Call(op string, body map[string]interface{}) (resp TTRSSResp) {
 	body["op"] = op
-	if len(tt.SessionID) > 0 {
+	if tt.SessionID != "" {
 		body["sid"] = tt.SessionID
 	}
 	fmt.Println("issuing call:", body)
@@ -258,6 +258,9 @@ func (ln *Ln) Run(args []string) {
 	var tt TTRSSClient
 	tt.Login(flAddr, flUser, flPass)
 
+	// An auth'd call that contains a feed URL will always "succeed".
+	// The actual return value is buried in Content["status"] as a map
+	// "code" => int, "message" => string (underlying error).
 	subscribeMap := map[string]interface{} {
 		"feed_url": feed,
 		//"category_id": catID  // int - defaults to 0 aka Uncategorized
@@ -265,10 +268,75 @@ func (ln *Ln) Run(args []string) {
 		//"password": ln.flPassword // if required
 	}
 	resp := tt.Call("subscribeToFeed", subscribeMap)
-	if resp.Error != nil {
+
+	// Subscription status values.
+	const (
+		SUB_STATUS_ALREADY_ADDED = iota
+		SUB_STATUS_ADDED
+		SUB_STATUS_INVALID_URL
+		SUB_STATUS_HTML_NO_FEEDS
+		SUB_STATUS_HTML_MULTIPLE_FEEDS
+		SUB_STATUS_GET_FAILED
+		SUB_STATUS_XML_INVALID
+		SUB_STATUS_COUNT
+	)
+
+	die := func(err string) {
 		log.Fatalf("error: unable to link feed %s at catpath %s: %s",
-			feed, catpath, resp.Error)
+			feed, catpath, err)
 	}
+
+	if resp.Error != nil {
+		die(resp.Error.Error())
+	}
+
+	subscribeStatus, ok := resp.Content["status"].(map[string]interface{})
+	if !ok {
+		log.Fatalf("error: no subscription status returned: have instead %#v",
+			resp.Content)
+	}
+
+	code, ok := subscribeStatus["code"].(float64)
+	if !ok || code >= SUB_STATUS_COUNT {
+		log.Fatalf("error: unexpected result from API: %#v", subscribeStatus)
+	}
+
+	message, ok := subscribeStatus["message"].(string)
+	if !ok {
+		message = "(no underlying error returned by API)"
+	}
+
+	good := code == SUB_STATUS_ALREADY_ADDED || code == SUB_STATUS_ADDED
+	text := fmt.Sprintf("???: unknown return code: %d (message: %s)",
+		code, message)
+	switch code {
+	case SUB_STATUS_ALREADY_ADDED:
+		text = fmt.Sprintf("warning: already subscribed to [%s]", feed)
+	case SUB_STATUS_ADDED:
+		text = ""
+	case SUB_STATUS_INVALID_URL:
+		text = fmt.Sprintf("error: invalid URL [%s]: %s", feed, message)
+	case SUB_STATUS_HTML_NO_FEEDS:
+		text = fmt.Sprintf("error: no feed link found in HTML of [%s]: %s",
+			feed, message)
+	case SUB_STATUS_HTML_MULTIPLE_FEEDS:
+		text = fmt.Sprintf(
+			"error: multiple feed links found in HTML of [%s]: %s",
+			feed, message)
+	case SUB_STATUS_GET_FAILED:
+		text = fmt.Sprintf("error: unable to GET [%s]: %s", feed, message)
+	case SUB_STATUS_XML_INVALID:
+		text = fmt.Sprintf("error: XML of [%s] is invalid: %s", feed, message)
+	default:
+		// already set text in this case
+	}
+	if text != "" {
+		fmt.Fprintln(os.Stderr, text)
+	}
+	if good {
+		os.Exit(EX_SUCCESS)
+	}
+	os.Exit(EX_DATAERR)
 }
 
 type Ls struct {
