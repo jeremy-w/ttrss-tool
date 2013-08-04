@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -181,14 +182,28 @@ func main() {
 		os.Exit(EX_USAGE)
 	}
 
-	requestedName := flag.Arg(0)
-	var chosenCmd Cmd
-	for name, cmd := range cmds {
-		if name == requestedName {
-			chosenCmd = cmd
+	if flPass == "" {
+		scanner := bufio.NewScanner(os.Stdin)
+
+		for {
+			fmt.Print("password (will be echoed): ")
+			ok := scanner.Scan()
+			if !ok {
+				msg := "error: failed reading password"
+				if err := scanner.Err(); err != nil {
+					msg += ": " + err.Error()
+				}
+				log.Fatal(msg)
+			}
+			if flPass = scanner.Text(); flPass == "" {
+				continue
+			}
 			break
 		}
 	}
+
+	requestedName := flag.Arg(0)
+	chosenCmd := cmds[requestedName]
 	if chosenCmd == nil {
 		availableCommands := make([]string, len(cmds))
 		for name := range cmds {
