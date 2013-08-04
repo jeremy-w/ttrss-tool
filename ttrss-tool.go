@@ -238,7 +238,7 @@ func (ln *Ln) Init() {
 }
 
 func (ln *Ln) Synopsis(w io.Writer) {
-	fmt.Println("ln feed [catpath] -- subscribes to a new feed")
+	fmt.Println("ln feed [catpath] -- subscribe to a new feed")
 }
 
 type TTRSSClient struct {

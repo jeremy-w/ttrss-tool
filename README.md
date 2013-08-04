@@ -31,8 +31,10 @@ ttrss as the backend, and thus was `ttrss-tool` born.)
 - Your account name on that instance.
 - Your password.
 
-You can supply this info by creating a dotfile `.ttrss-tool` in
-`$XDG_CONFIG_HOME` (default: `$HOME/.config`) like:
+You can supply this info by creating a config file `config` in a `ttrss-tool`
+directory in `$XDG_CONFIG_HOME` (which defaults to `$HOME/.config`).
+
+The config file should look like:
 
 ```json
 {
@@ -41,6 +43,18 @@ You can supply this info by creating a dotfile `.ttrss-tool` in
   "pass": "keepoutmallory"
 }
 ```
+
+or
+
+```json
+{
+  "addr": "https://example.com/ttrss/",
+  "user": "alice"
+}
+```
+
+With the latter form, you can either supply the password as a commandline flag,
+or let `ttrss-tool` prompt you for it.
 
 You can also supply this information as commandline flags:
 
@@ -51,7 +65,7 @@ You can also supply this information as commandline flags:
 
 If both dotfile and commandline flags are present, then the flags win.
 
-NOTE: The dotfile is just a JSON version of the commandline flags.
+**NOTE:** The dotfile is just a JSON version of the long commandline flags.
 
 ## Printing Categories and Feeds
 **TODO:** Describe how feeds and categories are displayed, and what the fields
