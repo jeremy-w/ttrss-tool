@@ -59,10 +59,19 @@ var cmds = map[string]Cmd{
 }
 
 func init() {
-	flag.StringVar(&flAddr, "addr", "",
-		"address (example: https://example.com/tt-rss/)")
-	flag.StringVar(&flUser, "user", "admin", "user to connect as")
-	flag.StringVar(&flPass, "pass", "password", "password to use")
+	const noDefault = ""
+	addrHelp := "address (example: https://example.com/tt-rss/)"
+	flag.StringVar(&flAddr, "addr", noDefault, addrHelp)
+	flag.StringVar(&flAddr, "a", noDefault, addrHelp)
+
+	userDefault := "admin"
+	userHelp := "user to connect as"
+	flag.StringVar(&flUser, "user", userDefault, userHelp)
+	flag.StringVar(&flUser, "u", userDefault, userHelp)
+
+	passwordHelp := "password to use"
+	flag.StringVar(&flPass, "pass", noDefault, passwordHelp)
+	flag.StringVar(&flPass, "p", noDefault, passwordHelp)
 
 	for _, cmd := range cmds {
 		cmd.Init()
