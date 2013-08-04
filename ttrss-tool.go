@@ -37,6 +37,7 @@ var (
 	flAddr string
 	flUser string
 	flPass string
+	flDotfilePath string
 )
 
 // Cmd is how main interacts with the subcommands.
@@ -108,6 +109,11 @@ func init() {
 	passwordHelp := "password to use"
 	flag.StringVar(&flPass, "pass", noDefault, passwordHelp)
 	flag.StringVar(&flPass, "p", noDefault, passwordHelp)
+
+	dotfileDefault := xdgConfigSearch("ttrss-tool/config", false)
+	dotfileHelp :=
+		"dotfile path (defaults to $XDG_CONFIG_HOME/ttrss-tool/config"
+	flag.StringVar(&flDotfilePath, "dotfile", dotfileDefault, dotfileHelp)
 
 	for _, cmd := range cmds {
 		cmd.Init()
