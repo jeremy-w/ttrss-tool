@@ -199,12 +199,20 @@ func (ln *Ln) Run(args []string) {
 	dec := json.NewDecoder(httpResp.Body)
 	err = dec.Decode(&resp)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "bad API response: %v\n", err)
+		fmt.Fprintf(os.Stderr,
+			"API JSON response was malformed: %v - "+
+			"are you sure you supplied the correct URL?\n", err)
 		os.Exit(EX_PROTOCOL)
 	}
-	sessionID, ok := resp.Content["sessionID"]
+	sessionID, ok := resp.Content["session_id"]
 	if !ok || resp.Status != API_STATUS_OK {
-		log.Fatalln("error: login failed")
+		msg := "error: failed to log in at %s as %s"
+		if apiError, ok := resp.Content["error"]; ok {
+			if errorText, ok := apiError.(string); ok {
+				msg += ": " + errorText
+			}
+		}
+		log.Fatalf(msg, apiEP, flagUser)
 	}
 	fmt.Println("sessionID", sessionID, feed, catpath)
 }
