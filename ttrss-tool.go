@@ -3,21 +3,31 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
+	"encoding/json"
+	"log"
 	"net/http"
 	"os"
+	"path"
 	"sort"
 	"strings"
 )
 
-var _ = http.StatusContinue
+// Status values returned from an API request.
+const (
+	API_STATUS_OK = iota
+	API_STATUS_ERR
+)
 
 // Exit Codes
 const (
 	EX_SUCCESS = 0
 	EX_USAGE = 64
+	EX_DATAERR = 65
+	EX_PROTOCOL = 76
 )
 
 // General Flags
@@ -152,7 +162,47 @@ func (ln *Ln) Run(args []string) {
 
 	feed := ln.flags.Arg(0)
 	catpath := ln.flags.Arg(1)
-	fmt.Println("ln", feed, catpath)
+
+	loginMap := map[string]string {
+		"op": "login",
+		"user": flagUser,
+		"password": flagPass,
+	}
+
+	var loginBuffer bytes.Buffer
+	enc := json.NewEncoder(&loginBuffer)
+	err := enc.Encode(loginMap)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "encoding error: %v\n", err)
+		os.Exit(EX_DATAERR)
+	}
+
+	apiEP := path.Join(flagAddr, "api")
+	var client http.Client
+	httpResp, err := client.Post(apiEP, "application/json", &loginBuffer)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "connection error: %v\n", err)
+		os.Exit(EX_DATAERR)
+	}
+
+	defer httpResp.Body.Close()
+	type TTRSSResp struct {
+		Seq int
+		Status int
+		Content map[string]interface{}
+	}
+	var resp TTRSSResp
+	dec := json.NewDecoder(httpResp.Body)
+	err = dec.Decode(&resp)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bad API response: %v\n", err)
+		os.Exit(EX_PROTOCOL)
+	}
+	sessionID, ok := resp.Content["sessionID"]
+	if !ok || resp.Status != API_STATUS_OK {
+		log.Fatalln("error: login failed")
+	}
+	fmt.Println("sessionID", sessionID, feed, catpath)
 }
 
 type Ls struct {
