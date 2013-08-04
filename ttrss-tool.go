@@ -167,14 +167,7 @@ func (ln *Ln) Run(args []string) {
 		"user": flagUser,
 		"password": flagPass,
 	}
-
-	var loginBuffer bytes.Buffer
-	enc := json.NewEncoder(&loginBuffer)
-	err := enc.Encode(loginMap)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "encoding error: %v\n", err)
-		os.Exit(EX_DATAERR)
-	}
+	loginBuffer := asJSONBuffer(loginMap)
 
 	apiEP := flagAddr
 	if !strings.HasSuffix(apiEP, "/") {
@@ -245,4 +238,16 @@ func (ls *Ls) Run(args []string) {
 		return
 	}
 	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
+}
+
+// Returns map converted to JSON as a buffer.
+// If an encoding error occurs, logs to stderr and exits with EX_DATAERR.
+func asJSONBuffer(v interface{}) (buffer bytes.Buffer) {
+	enc := json.NewEncoder(&buffer)
+	err := enc.Encode(v)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "encoding error: %v\n", err)
+		os.Exit(EX_DATAERR)
+	}
+	return
 }
