@@ -95,13 +95,14 @@ func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
 	return fallbackPath
 }
 
+var userDefault = "admin"
+
 func init() {
 	const noDefault = ""
 	addrHelp := "address (example: https://example.com/tt-rss/)"
 	flag.StringVar(&flAddr, "addr", noDefault, addrHelp)
 	flag.StringVar(&flAddr, "a", noDefault, addrHelp)
 
-	userDefault := "admin"
 	userHelp := "user to connect as"
 	flag.StringVar(&flUser, "user", userDefault, userHelp)
 	flag.StringVar(&flUser, "u", userDefault, userHelp)
@@ -134,8 +135,36 @@ func init() {
 	}
 }
 
+func applyDotfile(path string) {
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) { return }
+
+		log.Fatalf("error: unable to read dotfile [%s]: %s", path, err)
+	}
+
+	type Config struct {
+		Addr string
+		User string
+		Pass string
+	}
+	var config Config
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		log.Fatalf("error: unable to parse contents of dotfile [%s]: %s",
+			path, err)
+	}
+
+	// Only update values that were not set on the command line.
+	if flAddr == "" { flAddr = config.Addr }
+	if flUser == userDefault { flUser = config.User }
+	if flPass == "" { flPass = config.Pass }
+}
+
 func main() {
 	flag.Parse()
+
+	applyDotfile(flDotfilePath)
 
 	if flag.NArg() < 1 {
 		fmt.Fprintf(os.Stderr,
