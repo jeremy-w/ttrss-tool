@@ -1,5 +1,27 @@
 // vi: set noet ts=4 sw=4 ft=go tw=79:
-/* ttrss-tool manipulates tiny-tiny-rss subscriptions. */
+
+/*ttrss-tool is a commandline interface for managing your Tiny Tiny RSS
+subscriptions.
+
+Its interface is based on standard Unix shell file and directory management:
+the category hierarchy acts as directories, and feeds act as files.
+
+Features:
+
+  - Subscribe to a feed by linking it into a category with `ln url catpath`.
+  - List categories and feeds using `ls`.
+  - Unsubscribe using `rm`.
+  - And so on.
+
+LICENSE: ISC (https://github.com/jeremy-w/ttrss-tool/blob/master/LICENSE)
+
+NOTE: If you are looking for a Go library to manipulate Tiny Tiny RSS, you
+could extract one from this tool faster than you could write your own.
+I promise.
+
+See https://github.com/jeremy-w/ttrss-tool/blob/master/API.md to get a quick
+feel for why.
+*/
 package main
 
 import (
