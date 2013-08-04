@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"path"
 	"sort"
 	"strings"
 )
@@ -177,7 +176,12 @@ func (ln *Ln) Run(args []string) {
 		os.Exit(EX_DATAERR)
 	}
 
-	apiEP := path.Join(flagAddr, "api")
+	apiEP := flagAddr
+	if !strings.HasSuffix(apiEP, "/") {
+		apiEP += "/"
+	}
+	apiEP += "api/"
+
 	var client http.Client
 	httpResp, err := client.Post(apiEP, "application/json", &loginBuffer)
 	if err != nil {
