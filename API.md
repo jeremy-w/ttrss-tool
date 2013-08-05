@@ -41,29 +41,6 @@ The official docs do scatter some guidance throughout:
 
   The only immediately interesting one is `0`, the Uncategorized feeds.
 
-## API Used by ttrss-tool
-We only need to use a fraction of the odd API. What follows is valid as of
-the 1.9 release; you can treat it as documentation for the portion of the API
-we work with. No attempt was made to be exhaustive: we've got a job to do here!
-
-## APIs Used by Subcommand
-### Ln
-Uses `subscribeToFeed`, naturally enough.
-
-We have to convert the category name to the corresponding category ID using
-`getCategories`.
-
-### Ls
-Listing categories and feeds can use one of several API calls.
-The most general-purpose is `getFeedTree`; its sole drawback is lack of
-counters (unread status, number of items, etc.); that, and the mess of data
-it spits back that you then have to dig through.
-
-### Mkdir
-Uh, looks like you can't actually create a category via the stock tt-rss
-plugin API. Perhaps we can fork and PR, or, failing that, just distribute
-a plugin.
-
 ## Schema
 TinyTinyRSS is a very database-conscious app.
 It creates raw query strings and sends them over to the DB, then parses them
@@ -71,6 +48,139 @@ out itself.
 
 You'll want to look at the Postgres or MySQL schema in `schema/`.
 There's a good chunk of seed data and magic numbers supplied via the DB.
+
+## API Used by ttrss-tool
+We only need to use a fraction of the odd API. What follows is valid as of
+the 1.9 release; you can treat it as documentation for the portion of the API
+we work with. No attempt was made to be exhaustive: we've got a job to do here!
+
+### GetFeedTree
+The API represents a feed like so:
+
+```js
+{'auxcounter': 0,
+ 'bare_id': 5,
+ 'checkbox': False,
+ 'error': '',
+ 'icon': 'feed-icons/5.ico',
+ 'id': 'FEED:5',
+ 'name': 'Electrical',
+ 'param': '5:38',
+ 'type': 'feed',
+ 'unread': 0}
+```
+
+- `bare_id`: just `id` without the `FEED:` prefix
+- `id`: just `bare_id` with `type` capitalized and prefixed to `:bare_id`; this
+  is the ID in the feeds table in the DB
+- `name`: initially set to `[Unknown]` on creation; updated when fetched
+- `error`: set to the last error on the last update
+- `param`: might be empty if the feed is provided by a plugin; otherwise, it's
+  the local last-updated time
+  - Date is formatted using the `SHORT_DATE_FORMAT` preference, which defaults
+    to `'M d, G:i'`. Since user can change it, just pass it on through.
+- `checkbox`: It's always false. No idea why the API thinks we need that
+  non-info.
+- `auxcounter`: This is always 0. Yeah.
+
+A category looks like:
+
+```js
+{'auxcounter': 0,
+ 'bare_id': 0,
+ 'checkbox': False,
+ 'child_unread': 0,
+ 'id': 'CAT:0',
+ 'name': 'Uncategorized',
+ 'param': '(8 feeds)',
+ 'type': 'category',
+ 'unread': 0,
+ 'items': [/* child feeds/categories here */]}
+```
+
+- `type`, `bare_id`, `id`: like feed, but using `category` and `CAT`
+- `param`: used to list how many feeds are in the category; might be localized
+  and singular or plural, so just strip out the number if you care, or pass on
+  through unmodified
+
+### GetFeeds
+Completely different encoding than `getFeedTree`:
+
+- cat_id int if a feed, otherwise is_cat bool true
+- title like name
+- id like bare_id
+- unread int
+
+Categories will only be included if `include_nested` is set on the request.
+
+Real feeds (not labels) also include:
+
+- feed_url string
+- has_icon bool
+- last_updated int timestamp
+- order_id int
+
+Notice that, while this won't recurse for you, it gives you far better info.
+
+Unfortunately, there is no way to get the root child categories from this API
+call, because a zero `cat_id` is the default null Uncategorized category.
+
+### GetCategories
+Returns something different yet again:
+
+- `id`
+- `title`
+- `unread`
+- `order_id` int always zero for me, but maybe if you messed with the order in
+  the Web UI, it would be different (not that we care)
+
+## APIs Used by Subcommand
+### CatPath
+Many commands rely on a "catpath", a category path, like `/Cat1/Cat2/Cat3`.
+
+The slow way to resolve this would be like so:
+
+- Issue a `getCategories, include_empty: true, include_nested: true` to get the
+  top-level categories and their IDs.
+- Match name of first path component, grab the ID.
+- Use that ID to issue a `getFeeds, include_nested: true`, and repeat from
+  previous step.
+
+A faster way:
+
+- Issue a `getFeedTree, include_empty: true`
+- The structure of the tree matches the category tree.
+
+For feed URL, we still have to issue a `getFeeds`:
+
+- If we use cat -3, we get all feeds, including virtual ones.
+- Use -4 for all feeds, excluding virtual.
+- Generally, we'll probably be able to specify precisely the feed we want.
+
+tt-rss checks whether there's already a category with the same name under the same parent before adding another, so we shouldn't have to worry about categories with duplicate names at the same level.
+
+It is possible to add a feed with the same name as a category.
+We should pitch a fit if it actually causes us ambiguity and leave it at that,
+though the user should be able to resolve the ambiguity by including
+or excluding the final category-indicating slash on the catpath.
+
+We might also just let them use the `CAT:1234` and `FEED:1234` syntax as
+alternatives to the catpath.
+
+### Ln
+Uses `subscribeToFeed` and the `cat_id` found via CatPath, naturally enough.
+
+### Ls
+See "CatPath" section above.
+
+One question is how to print things. `catName/` and `feedName`, then add a
+long version that does `catName/ CAT:ID`
+and `feedName FEED:ID lastUpdated error`.
+
+### Mkdir
+Uh, looks like you can't actually create a category via the stock tt-rss
+plugin API. Perhaps we can fork and PR, or, failing that, just distribute
+a plugin.
 
 ## Random API
 So, there's more API than just `api.php`.
@@ -92,13 +202,11 @@ corresponding `public.php` for certain operations:
 For the rest, it does a general search of registered handlers responding to
 the provided `op` and `subop`/`method` pair.
 
-The rest of the public operations can be found by searching for
-`add_handler("public"`, which registers a handler for a given op under
-`public.php`.
-This is where `fbexport` gets provided, by the `init` plugin.
+Plugins can register subops using `add_handler`.
 
-The bulk of the operations are exposed as methods on
-`classes/handler/public.php`.
+Useful methods are exposed by the `rpc` op,
+including most notably `quickAddCat cat: "title"`,
+which at least lets you add categories at the root of the hierarchy.
 
 ## Miscellaneous Notes
 - Plugins can provide their own API by calling `PluginHost::add_api_method`,
@@ -112,3 +220,4 @@ The bulk of the operations are exposed as methods on
 - The server will grunge through HTML to find a feed link; if it finds multiple
   feed links (very commonly, you'll find both an articles feed and a comments
   feed), it will give up and make the user pick one.
+- All API calls that take IDs want the bare ID, not the type-prefixed ID.
