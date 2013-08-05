@@ -11,18 +11,21 @@ and lives at [jeremy-w/ttrss-tool](https://github.com/jeremy-w/ttrss-tool).
 ttrss as the backend, and thus was `ttrss-tool` born.)
 
 ## Usage
-- `ttrss-tool ls` (short for `ls /`)
-  lists top-level categories and uncategorized feeds.
-- `ttrss-tool ls /category`
-  lists the categories and feeds directly under that category.
-- `ttrss-tool ls -R`
-  recursively lists categories and feeds.
-- `ttrss-tool mkdir /category`
-  adds a new, empty (sub)category.
-- `ttrss-tool ln feedurl /category`
+- `ttrss-tool ls [-lR] [catpath]`
+  lists categories at `/` (default) or categories and feeds contained in
+  the specified category.
+- `ttrss-tool ln feed_url [catpath]`
   links a new feed into the specified category.
-- `ttrss-tool rm feed`
-  removes the feed with the specified ID from your subscriptions.
+  If no category is specified, or `/` is specified, the feed is added to the
+  default "Uncategorized" category.
+- `ttrss-tool mkdir title`
+  creates a new category.
+  Due to API limitations, we can only create a top-level category.
+- `ttrss-tool rm feed_spec`
+  removes the specified feed.
+  The feed can be specified by title using a catpath,
+  by URL, or by numeric ID.
+  (You can find the latter two bits of info using `ls -l`.)
 
 ## Authentication
 `ttrss-tool` requires three pieces of information to operate:

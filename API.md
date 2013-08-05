@@ -173,9 +173,11 @@ Uses `subscribeToFeed` and the `cat_id` found via CatPath, naturally enough.
 ### Ls
 See "CatPath" section above.
 
-One question is how to print things. `catName/` and `feedName`, then add a
-long version that does `catName/ CAT:ID`
-and `feedName FEED:ID lastUpdated error`.
+Printing:
+
+- short: `catName/` and `feedName`
+- long: `catName/ CAT:ID` and
+  `feedName <url:feedURL> FEED:ID lastUpdated error`.
 
 ### Mkdir
 Uh, looks like you can't actually create a category via the stock tt-rss
