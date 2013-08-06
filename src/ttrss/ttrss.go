@@ -17,6 +17,28 @@ const (
 	API_STATUS_ERR
 )
 
+// Predefined category IDs
+const (
+	CATEGORY_UNCATEGORIZED = 0
+	CATEGORY_SPECIAL = -1
+	CATEGORY_LABELS = -2
+	CATEGORY_FEEDS_NOT_VIRTUAL = -3
+	CATEGORY_FEEDS_ALL = -4
+)
+
+// Predefined feed IDs
+// Additionally, plugin feeds range down from config value
+// PLUGIN_FEED_BASE_INDEX (default: -128), and label feeds from config value
+// LABEL_BASE_INDEX (default: -1024) down.
+const (
+	FEED_ARCHIVED_ARTICLES = 0
+	FEED_STARRED_ARTICLES = -1
+	FEED_PUBLISHED_ARTICLES = -2
+	FEED_FRESH_ARTICLES = -3
+	FEED_ALL_ARTICLES = -4
+	FEED_RECENTLY_READ = -6
+)
+
 type Client struct {
 	ApiEP     string
 	Client    http.Client
