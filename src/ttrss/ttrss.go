@@ -122,6 +122,102 @@ func (tt *Client) Login(conn ConnInfo) (ok bool, err error) {
 	return
 }
 
+type SubscribeStatus int
+
+// Status codes returned by ttrss.Subscribe().
+const (
+	SUB_ALREADY_ADDED SubscribeStatus = iota
+	SUB_ADDED
+	SUB_INVALID_URL
+	SUB_HTML_NO_FEEDS
+	SUB_HTML_MULTIPLE_FEEDS
+	SUB_GET_FAILED
+	SUB_XML_INVALID
+)
+
+func (status SubscribeStatus) String() (text string) {
+	switch status {
+	case SUB_ALREADY_ADDED:
+		text = "already subscribed to feed"
+	case SUB_ADDED:
+		text = ""
+	case SUB_INVALID_URL:
+		text = "invalid feed URL"
+	case SUB_HTML_NO_FEEDS:
+		text = "no feed link found in HTML at URL"
+	case SUB_HTML_MULTIPLE_FEEDS:
+		text = "multiple feed links found in HTML at URL"
+	case SUB_GET_FAILED:
+		text = "unable to GET URL"
+	case SUB_XML_INVALID:
+		text = "invalid XML at URL"
+	default:
+		fmt.Sprintf("unknown Subscribe status: %d", status)
+	}
+	return
+}
+
+type SubscribeError struct {
+	Status SubscribeStatus
+
+	// Error message provided by the API.
+	Message string
+}
+
+func (err *SubscribeError) Error() (text string) {
+	text = fmt.Sprintf("%s: %s", err.Status, err.Message)
+	return
+}
+
+func (tt *Client) Subscribe(feedURL string, categoryID int, feedUsername string, feedPassword string) (didSubscribe bool, err error) {
+	// An auth'd call that contains a feed URL will always "succeed".
+	// The actual return value is buried in Content["status"] as a map
+	// "code" => int, "message" => string (underlying error).
+	subscribeMap := map[string]interface{}{
+		"feed_url": feedURL,
+		"category_id": categoryID,
+	}
+	if feedUsername != "" {
+		subscribeMap["login"] = feedUsername
+		subscribeMap["password"] = feedPassword
+	}
+	resp, err := tt.Call("subscribeToFeed", subscribeMap)
+
+	if err != nil {
+		return
+	}
+
+	if resp.Error != nil {
+		err = fmt.Errorf("API error: %s", resp.Error)
+		return
+	}
+
+	subscribeStatus, ok := resp.Content["status"].(map[string]interface{})
+	if !ok {
+		err = fmt.Errorf("error: no subscription status: have instead %#v",
+			resp.Content)
+		return
+	}
+
+	jsonCode, ok := subscribeStatus["code"].(float64)
+	code := SubscribeStatus(jsonCode)
+	if tok := SUB_ADDED <= code && code <= SUB_XML_INVALID; !ok || !tok {
+		err = fmt.Errorf("Unknown SubscribeStatus: %#v",
+			subscribeStatus)
+		return
+	}
+
+	message, ok := subscribeStatus["message"].(string)
+	if !ok {
+		message = "(no underlying error returned by API)"
+	}
+
+	err = &SubscribeError{code, message}
+
+	didSubscribe = code == SUB_ADDED || code == SUB_ALREADY_ADDED
+	return
+}
+
 // Returns map converted to JSON as a buffer.
 // If an encoding error occurs, buffer will be nil and err will be set.
 func AsJSONBuffer(v interface{}) (buffer bytes.Buffer, err error) {

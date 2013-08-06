@@ -205,87 +205,20 @@ func (ln *Ln) Run(args []string) {
 
 	feed := ln.flags.Arg(0)
 	catpath := ln.flags.Arg(1)
-
-	// An auth'd call that contains a feed URL will always "succeed".
-	// The actual return value is buried in Content["status"] as a map
-	// "code" => int, "message" => string (underlying error).
-	subscribeMap := map[string]interface{}{
-		"feed_url": feed,
-		//"category_id": catID  // int - defaults to 0 aka Uncategorized
-		//"login": ln.flLogin  // if required
-		//"password": ln.flPassword // if required
-	}
-	resp, err := tt.Call("subscribeToFeed", subscribeMap)
-
-	// Subscription status values.
-	const (
-		SUB_STATUS_ALREADY_ADDED = iota
-		SUB_STATUS_ADDED
-		SUB_STATUS_INVALID_URL
-		SUB_STATUS_HTML_NO_FEEDS
-		SUB_STATUS_HTML_MULTIPLE_FEEDS
-		SUB_STATUS_GET_FAILED
-		SUB_STATUS_XML_INVALID
-		SUB_STATUS_COUNT
-	)
-
-	die := func(err string) {
-		log.Fatalf("error: unable to link feed %s at catpath %s: %s",
-			feed, catpath, err)
-	}
-
+	categoryID, err := ResolveCatPath(catpath)
 	if err != nil {
-		die(err.Error())
+		log.Fatalln(err)
 	}
 
-	if resp.Error != nil {
-		die(resp.Error.Error())
+	subscribed, err := tt.Subscribe(feed, categoryID, "", "")
+
+	if s, ok := err.(*ttrss.SubscribeError); ok {
+		if (s.Status != ttrss.SUB_ADDED) {
+			fmt.Fprintln(os.Stderr, s.Message)
+		}
 	}
 
-	subscribeStatus, ok := resp.Content["status"].(map[string]interface{})
-	if !ok {
-		log.Fatalf("error: no subscription status returned: have instead %#v",
-			resp.Content)
-	}
-
-	code, ok := subscribeStatus["code"].(float64)
-	if !ok || code >= SUB_STATUS_COUNT {
-		log.Fatalf("error: unexpected result from API: %#v", subscribeStatus)
-	}
-
-	message, ok := subscribeStatus["message"].(string)
-	if !ok {
-		message = "(no underlying error returned by API)"
-	}
-
-	good := code == SUB_STATUS_ALREADY_ADDED || code == SUB_STATUS_ADDED
-	text := fmt.Sprintf("???: unknown return code: %d (message: %s)",
-		code, message)
-	switch code {
-	case SUB_STATUS_ALREADY_ADDED:
-		text = fmt.Sprintf("warning: already subscribed to [%s]", feed)
-	case SUB_STATUS_ADDED:
-		text = ""
-	case SUB_STATUS_INVALID_URL:
-		text = fmt.Sprintf("error: invalid URL [%s]: %s", feed, message)
-	case SUB_STATUS_HTML_NO_FEEDS:
-		text = fmt.Sprintf("error: no feed link found in HTML of [%s]: %s",
-			feed, message)
-	case SUB_STATUS_HTML_MULTIPLE_FEEDS:
-		text = fmt.Sprintf(
-			"error: multiple feed links found in HTML of [%s]: %s",
-			feed, message)
-	case SUB_STATUS_GET_FAILED:
-		text = fmt.Sprintf("error: unable to GET [%s]: %s", feed, message)
-	case SUB_STATUS_XML_INVALID:
-		text = fmt.Sprintf("error: XML of [%s] is invalid: %s", feed, message)
-	default:
-		// already set text in this case
-	}
-	if text != "" {
-		fmt.Fprintln(os.Stderr, text)
-	}
-	if good {
+	if subscribed {
 		os.Exit(EX_SUCCESS)
 	}
 	os.Exit(EX_DATAERR)
@@ -420,4 +353,9 @@ func readPassword(r io.Reader, w io.Writer) (pass string, err error) {
 		}
 		return
 	}
+}
+
+func ResolveCatPath(catpath string) (catID int, err error) {
+	fmt.Fprintln(os.Stderr, "TODO: IMPLEMENT ResolveCatPath")
+	return
 }
