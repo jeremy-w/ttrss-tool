@@ -77,40 +77,6 @@ var cmds = map[string]Cmd{
 	"ls": &Ls{},
 }
 
-func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
-	home := os.Getenv("HOME")
-	dir := os.Getenv("XDG_CONFIG_HOME")
-	if dir == "" { dir = path.Join(home, ".config") }
-	dirs := []string{dir}
-
-	dirsString := os.Getenv("XDG_CONFIG_DIRS")
-	if dirsString != "" {
-		moreDirs := strings.Split(dirsString, ":")
-		dirs = append(dirs, moreDirs...)
-	}
-
-	fallbackPath := ""
-	for _, dir := range dirs {
-		if !strings.HasPrefix(dir, "/") { continue }
-		if _, err := os.Stat(dir); err != nil {
-			continue
-		}
-		path := path.Join(dir, subpath)
-		if fallbackPath == "" {
-			fallbackPath = path
-		}
-		_, err := os.Stat(path)
-		if err == nil {
-			return path
-		}
-	}
-
-	if onlyIfExists {
-		return ""
-	}
-	return fallbackPath
-}
-
 var userDefault = "admin"
 
 func init() {
@@ -149,41 +115,6 @@ func init() {
 			cmd.Synopsis(w)
 		}
 	}
-}
-
-// Updates global flags based on the dotfile at path.
-// If the file does not exist, nothing happens.
-// If it does exist, but cannot be read or parsed, the program terminates.
-func applyDotfile(path string) (err error) {
-	bytes, err := ioutil.ReadFile(path)
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = nil
-			return
-		}
-
-		err = fmt.Errorf("error: unable to read dotfile [%s]: %s", path, err)
-		return
-	}
-
-	type Config struct {
-		Addr string
-		User string
-		Pass string
-	}
-	var config Config
-	err = json.Unmarshal(bytes, &config)
-	if err != nil {
-		err = fmt.Errorf("error: unable to parse contents of dotfile [%s]: %s",
-			path, err)
-		return
-	}
-
-	// Only update values that were not set on the command line.
-	if flAddr == "" { flAddr = config.Addr }
-	if flUser == userDefault { flUser = config.User }
-	if flPass == "" { flPass = config.Pass }
-	return
 }
 
 func main() {
@@ -401,4 +332,73 @@ func (ls *Ls) Run(args []string) {
 		return
 	}
 	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
+}
+
+func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
+	home := os.Getenv("HOME")
+	dir := os.Getenv("XDG_CONFIG_HOME")
+	if dir == "" { dir = path.Join(home, ".config") }
+	dirs := []string{dir}
+
+	dirsString := os.Getenv("XDG_CONFIG_DIRS")
+	if dirsString != "" {
+		moreDirs := strings.Split(dirsString, ":")
+		dirs = append(dirs, moreDirs...)
+	}
+
+	fallbackPath := ""
+	for _, dir := range dirs {
+		if !strings.HasPrefix(dir, "/") { continue }
+		if _, err := os.Stat(dir); err != nil {
+			continue
+		}
+		path := path.Join(dir, subpath)
+		if fallbackPath == "" {
+			fallbackPath = path
+		}
+		_, err := os.Stat(path)
+		if err == nil {
+			return path
+		}
+	}
+
+	if onlyIfExists {
+		return ""
+	}
+	return fallbackPath
+}
+
+// Updates global flags based on the dotfile at path.
+// If the file does not exist, nothing happens.
+// If it does exist, but cannot be read or parsed, the program terminates.
+func applyDotfile(path string) (err error) {
+	bytes, err := ioutil.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = nil
+			return
+		}
+
+		err = fmt.Errorf("error: unable to read dotfile [%s]: %s", path, err)
+		return
+	}
+
+	type Config struct {
+		Addr string
+		User string
+		Pass string
+	}
+	var config Config
+	err = json.Unmarshal(bytes, &config)
+	if err != nil {
+		err = fmt.Errorf("error: unable to parse contents of dotfile [%s]: %s",
+			path, err)
+		return
+	}
+
+	// Only update values that were not set on the command line.
+	if flAddr == "" { flAddr = config.Addr }
+	if flUser == userDefault { flUser = config.User }
+	if flPass == "" { flPass = config.Pass }
+	return
 }
