@@ -39,17 +39,17 @@ import (
 
 // Exit Codes
 const (
-	EX_SUCCESS = 0
-	EX_USAGE = 64
-	EX_DATAERR = 65
+	EX_SUCCESS  = 0
+	EX_USAGE    = 64
+	EX_DATAERR  = 65
 	EX_PROTOCOL = 76
 )
 
 // General Flags
 var (
-	flAddr string
-	flUser string
-	flPass string
+	flAddr        string
+	flUser        string
+	flPass        string
 	flDotfilePath string
 )
 
@@ -175,7 +175,7 @@ func FlagSetPrintUsage(fl flag.FlagSet, w io.Writer, progname string) {
 
 type Ln struct {
 	flHelp bool
-	flags flag.FlagSet
+	flags  flag.FlagSet
 }
 
 func (ln *Ln) Init() {
@@ -209,7 +209,7 @@ func (ln *Ln) Run(args []string) {
 	// An auth'd call that contains a feed URL will always "succeed".
 	// The actual return value is buried in Content["status"] as a map
 	// "code" => int, "message" => string (underlying error).
-	subscribeMap := map[string]interface{} {
+	subscribeMap := map[string]interface{}{
 		"feed_url": feed,
 		//"category_id": catID  // int - defaults to 0 aka Uncategorized
 		//"login": ln.flLogin  // if required
@@ -292,9 +292,9 @@ func (ln *Ln) Run(args []string) {
 }
 
 type Ls struct {
-	flHelp bool
+	flHelp    bool
 	flRecurse bool
-	flags flag.FlagSet
+	flags     flag.FlagSet
 }
 
 func (ls *Ls) Init() {
@@ -324,7 +324,9 @@ func (ls *Ls) Run(args []string) {
 func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
 	home := os.Getenv("HOME")
 	dir := os.Getenv("XDG_CONFIG_HOME")
-	if dir == "" { dir = path.Join(home, ".config") }
+	if dir == "" {
+		dir = path.Join(home, ".config")
+	}
 	dirs := []string{dir}
 
 	dirsString := os.Getenv("XDG_CONFIG_DIRS")
@@ -335,7 +337,9 @@ func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
 
 	fallbackPath := ""
 	for _, dir := range dirs {
-		if !strings.HasPrefix(dir, "/") { continue }
+		if !strings.HasPrefix(dir, "/") {
+			continue
+		}
 		if _, err := os.Stat(dir); err != nil {
 			continue
 		}
@@ -384,9 +388,15 @@ func applyDotfile(path string) (err error) {
 	}
 
 	// Only update values that were not set on the command line.
-	if flAddr == "" { flAddr = config.Addr }
-	if flUser == userDefault { flUser = config.User }
-	if flPass == "" { flPass = config.Pass }
+	if flAddr == "" {
+		flAddr = config.Addr
+	}
+	if flUser == userDefault {
+		flUser = config.User
+	}
+	if flPass == "" {
+		flPass = config.Pass
+	}
 	return
 }
 

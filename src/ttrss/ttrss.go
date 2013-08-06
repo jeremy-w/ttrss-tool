@@ -18,8 +18,8 @@ const (
 )
 
 type Client struct {
-	ApiEP string
-	Client http.Client
+	ApiEP     string
+	Client    http.Client
 	SessionID string
 }
 
@@ -64,7 +64,7 @@ func (tt *Client) Call(op string, body map[string]interface{}) (resp Resp, err e
 	dec := json.NewDecoder(httpResp.Body)
 	err = dec.Decode(&resp)
 	if err != nil {
-		err = fmt.Errorf( "API JSON response was malformed: %v - "+
+		err = fmt.Errorf("API JSON response was malformed: %v - "+
 			"are you sure you supplied the correct URL?\n", err)
 		return
 	}
@@ -82,8 +82,8 @@ func (tt *Client) Call(op string, body map[string]interface{}) (resp Resp, err e
 }
 
 type ConnInfo struct {
-	HostURL string
-	User string
+	HostURL  string
+	User     string
 	Password string
 }
 
@@ -98,8 +98,8 @@ func (tt *Client) Login(conn ConnInfo) (ok bool, err error) {
 	tt.ApiEP = apiEP
 	fmt.Println("### trying to log in as", conn.User)
 
-	loginMap := map[string]interface{} {
-		"user": conn.User,
+	loginMap := map[string]interface{}{
+		"user":     conn.User,
 		"password": conn.Password,
 	}
 	resp, err := tt.Call("login", loginMap)
