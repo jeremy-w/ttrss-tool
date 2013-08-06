@@ -141,22 +141,9 @@ func main() {
 	}
 
 	if flPass == "" {
-		scanner := bufio.NewScanner(os.Stdin)
-
-		for {
-			fmt.Print("password (will be echoed): ")
-			ok := scanner.Scan()
-			if !ok {
-				msg := "error: failed reading password"
-				if err := scanner.Err(); err != nil {
-					msg += ": " + err.Error()
-				}
-				log.Fatal(msg)
-			}
-			if flPass = scanner.Text(); flPass == "" {
-				continue
-			}
-			break
+		flPass, err = readPassword(os.Stdin, os.Stdout)
+		if err != nil {
+			log.Fatal(err.Error())
 		}
 	}
 
@@ -401,4 +388,26 @@ func applyDotfile(path string) (err error) {
 	if flUser == userDefault { flUser = config.User }
 	if flPass == "" { flPass = config.Pass }
 	return
+}
+
+// Reads a password from r after writing prompt to w.
+func readPassword(r io.Reader, w io.Writer) (pass string, err error) {
+	scanner := bufio.NewScanner(r)
+
+	for {
+		fmt.Fprint(w, "password (will be echoed): ")
+		ok := scanner.Scan()
+		if !ok {
+			msg := "error: failed reading password"
+			if err := scanner.Err(); err != nil {
+				msg += ": " + err.Error()
+			}
+			err = fmt.Errorf("%s", msg)
+			return
+		}
+		if pass = scanner.Text(); pass == "" {
+			continue
+		}
+		return
+	}
 }
