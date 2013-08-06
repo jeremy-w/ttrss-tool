@@ -148,12 +148,19 @@ func init() {
 	}
 }
 
-func applyDotfile(path string) {
+// Updates global flags based on the dotfile at path.
+// If the file does not exist, nothing happens.
+// If it does exist, but cannot be read or parsed, the program terminates.
+func applyDotfile(path string) (err error) {
 	bytes, err := ioutil.ReadFile(path)
 	if err != nil {
-		if os.IsNotExist(err) { return }
+		if os.IsNotExist(err) {
+			err = nil
+			return
+		}
 
-		log.Fatalf("error: unable to read dotfile [%s]: %s", path, err)
+		err = fmt.Errorf("error: unable to read dotfile [%s]: %s", path, err)
+		return
 	}
 
 	type Config struct {
@@ -164,20 +171,25 @@ func applyDotfile(path string) {
 	var config Config
 	err = json.Unmarshal(bytes, &config)
 	if err != nil {
-		log.Fatalf("error: unable to parse contents of dotfile [%s]: %s",
+		err = fmt.Errorf("error: unable to parse contents of dotfile [%s]: %s",
 			path, err)
+		return
 	}
 
 	// Only update values that were not set on the command line.
 	if flAddr == "" { flAddr = config.Addr }
 	if flUser == userDefault { flUser = config.User }
 	if flPass == "" { flPass = config.Pass }
+	return
 }
 
 func main() {
 	flag.Parse()
 
-	applyDotfile(flDotfilePath)
+	err := applyDotfile(flDotfilePath)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 
 	if flag.NArg() < 1 {
 		fmt.Fprintf(os.Stderr,
