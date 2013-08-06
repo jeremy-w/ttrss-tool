@@ -167,7 +167,7 @@ func main() {
 	chosenCmd.Run(flag.Args()[1:])
 }
 
-func FlagSetPrintUsage(fl flag.FlagSet, w io.Writer, progname string) {
+func flagSetPrintUsage(fl flag.FlagSet, w io.Writer, progname string) {
 	fmt.Fprintf(w, "Usage of %s:\n", progname)
 	fl.SetOutput(w)
 	fl.PrintDefaults()
@@ -193,13 +193,13 @@ func (ln *Ln) Run(args []string) {
 	ln.flags.Parse(args)
 
 	if ln.flHelp {
-		FlagSetPrintUsage(ln.flags, os.Stdout, "ln")
+		flagSetPrintUsage(ln.flags, os.Stdout, "ln")
 		os.Exit(EX_SUCCESS)
 	}
 
 	argc := ln.flags.NArg()
 	if argc < 1 {
-		FlagSetPrintUsage(ln.flags, os.Stderr, "ln")
+		flagSetPrintUsage(ln.flags, os.Stderr, "ln")
 		os.Exit(EX_USAGE)
 	}
 
@@ -315,7 +315,7 @@ func (ls *Ls) Synopsis(w io.Writer) {
 func (ls *Ls) Run(args []string) {
 	_ = ls.flags.Parse(args)
 	if ls.flHelp {
-		FlagSetPrintUsage(ls.flags, os.Stdout, "ls")
+		flagSetPrintUsage(ls.flags, os.Stdout, "ls")
 		return
 	}
 	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
