@@ -13,38 +13,28 @@ Features:
   - Unsubscribe using `rm`.
   - And so on.
 
+Bonus:
+
+  - Includes a nascent ttrss library.
+    Get a jumpstart on building your own go-lang TTRSS tool today!
+
 LICENSE: ISC (https://github.com/jeremy-w/ttrss-tool/blob/master/LICENSE)
-
-NOTE: If you are looking for a Go library to manipulate Tiny Tiny RSS, you
-could extract one from this tool faster than you could write your own.
-I promise.
-
-See https://github.com/jeremy-w/ttrss-tool/blob/master/API.md to get a quick
-feel for why.
 */
 package main
 
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
-	"errors"
 	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"path"
 	"sort"
 	"strings"
-)
-
-// Status values returned from an API request.
-const (
-	API_STATUS_OK = iota
-	API_STATUS_ERR
+	"ttrss"
 )
 
 // Exit Codes
@@ -263,98 +253,6 @@ func (ln *Ln) Synopsis(w io.Writer) {
 	fmt.Println("ln feed [catpath] -- subscribe to a new feed")
 }
 
-type TTRSSClient struct {
-	ApiEP string
-	Client http.Client
-	SessionID string
-}
-
-// TTRSSResp represents the JSON response returned by the TTRSS API.
-type TTRSSResp struct {
-	// Same as request "seq" number, if provided.
-	// Otherwise mostly 0, but sometimes null.
-	Seq int
-
-	// TTRSS_API_STATUS_* value (hopefully)
-	Status int
-
-	// Content["error"] wrapped as an error; nil if not present or not string
-	Error error
-
-	// Content of the response.
-	Content map[string]interface{}
-}
-
-// Call issues an API request.
-// If an error status is returned, tt.Error will be set.
-// If an HTTP connection error occurs, the application terminates with an
-// error message, and the call does not return.
-func (tt *TTRSSClient) Call(op string, body map[string]interface{}) (resp TTRSSResp) {
-	body["op"] = op
-	if tt.SessionID != "" {
-		body["sid"] = tt.SessionID
-	}
-	fmt.Println("issuing call:", body)
-
-	buffer := asJSONBuffer(body)
-	httpResp, err := tt.Client.Post(tt.ApiEP, "application/json", &buffer)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "connection error: %v\n", err)
-		os.Exit(EX_DATAERR)
-	}
-
-	defer httpResp.Body.Close()
-	dec := json.NewDecoder(httpResp.Body)
-	err = dec.Decode(&resp)
-	if err != nil {
-		fmt.Fprintf(os.Stderr,
-			"API JSON response was malformed: %v - "+
-			"are you sure you supplied the correct URL?\n", err)
-		os.Exit(EX_PROTOCOL)
-	}
-
-	resp.Error = nil
-	if apiError, ok := resp.Content["error"]; ok {
-		if errorString, ok := apiError.(string); ok {
-			resp.Error = errors.New(errorString)
-		}
-	}
-	if resp.Status != API_STATUS_OK && resp.Error == nil {
-		resp.Error = errors.New("(response contained no error text)")
-	}
-	return
-}
-
-// Logs into the host as the designated user.
-// Terminates the program with an error message if login fails.
-// Otherwise, updates tt.ApiEP and tt.SessionID.
-func (tt *TTRSSClient) Login(hostURL string, user string, password string) {
-	apiEP := hostURL
-	if !strings.HasSuffix(apiEP, "/") {
-		apiEP += "/"
-	}
-	apiEP += "api/"
-	tt.ApiEP = apiEP
-	fmt.Println("trying to log in as", user)
-
-	loginMap := map[string]interface{} {
-		"user": user,
-		"password": password,
-	}
-	resp := tt.Call("login", loginMap)
-
-	sessionID, ok := resp.Content["session_id"]
-	if !ok || resp.Status != API_STATUS_OK {
-		msg := "error: failed to log in at %s as %s"
-		if resp.Error != nil {
-			msg += ": " + resp.Error.Error()
-		}
-		log.Fatalf(msg, apiEP, flUser)
-	}
-	tt.SessionID = sessionID.(string)
-	fmt.Println("logged in as", user, "with sessionID", tt.SessionID)
-}
-
 func (ln *Ln) Run(args []string) {
 	ln.flags.Parse(args)
 
@@ -372,8 +270,8 @@ func (ln *Ln) Run(args []string) {
 	feed := ln.flags.Arg(0)
 	catpath := ln.flags.Arg(1)
 
-	var tt TTRSSClient
-	tt.Login(flAddr, flUser, flPass)
+	var tt ttrss.Client
+	tt.Login(ttrss.ConnInfo{flAddr, flUser, flPass})
 
 	// An auth'd call that contains a feed URL will always "succeed".
 	// The actual return value is buried in Content["status"] as a map
@@ -384,7 +282,7 @@ func (ln *Ln) Run(args []string) {
 		//"login": ln.flLogin  // if required
 		//"password": ln.flPassword // if required
 	}
-	resp := tt.Call("subscribeToFeed", subscribeMap)
+	resp, err := tt.Call("subscribeToFeed", subscribeMap)
 
 	// Subscription status values.
 	const (
@@ -401,6 +299,10 @@ func (ln *Ln) Run(args []string) {
 	die := func(err string) {
 		log.Fatalf("error: unable to link feed %s at catpath %s: %s",
 			feed, catpath, err)
+	}
+
+	if err != nil {
+		die(err.Error())
 	}
 
 	if resp.Error != nil {
@@ -484,16 +386,4 @@ func (ls *Ls) Run(args []string) {
 		return
 	}
 	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
-}
-
-// Returns map converted to JSON as a buffer.
-// If an encoding error occurs, logs to stderr and exits with EX_DATAERR.
-func asJSONBuffer(v interface{}) (buffer bytes.Buffer) {
-	enc := json.NewEncoder(&buffer)
-	err := enc.Encode(v)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "encoding error: %v\n", err)
-		os.Exit(EX_DATAERR)
-	}
-	return
 }
