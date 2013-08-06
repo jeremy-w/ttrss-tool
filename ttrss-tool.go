@@ -53,6 +53,9 @@ var (
 	flDotfilePath string
 )
 
+// tt is logged in by main() prior to running any command.
+var tt ttrss.Client
+
 // Cmd is how main interacts with the subcommands.
 type Cmd interface {
 	// Init is used to configure any flags.
@@ -240,6 +243,9 @@ func main() {
 			os.Args[0], requestedName, availableCommands)
 		os.Exit(EX_USAGE)
 	}
+
+	tt.Login(ttrss.ConnInfo{flAddr, flUser, flPass})
+
 	chosenCmd.Run(flag.Args()[1:])
 }
 
@@ -281,9 +287,6 @@ func (ln *Ln) Run(args []string) {
 
 	feed := ln.flags.Arg(0)
 	catpath := ln.flags.Arg(1)
-
-	var tt ttrss.Client
-	tt.Login(ttrss.ConnInfo{flAddr, flUser, flPass})
 
 	// An auth'd call that contains a feed URL will always "succeed".
 	// The actual return value is buried in Content["status"] as a map
