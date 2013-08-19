@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"path/filepath"
 	"fmt"
 	"net/http"
 	"strings"
@@ -100,6 +101,7 @@ func (tt *Client) Call(op string, body map[string]interface{}) (resp Resp, err e
 	if resp.Status != API_STATUS_OK && resp.Error == nil {
 		resp.Error = errors.New("(response contained no error text)")
 	}
+	fmt.Println("###", op, "status:", resp.Status)
 	return
 }
 
@@ -118,7 +120,7 @@ func (tt *Client) Login(conn ConnInfo) (ok bool, err error) {
 	}
 	apiEP += "api/"
 	tt.ApiEP = apiEP
-	fmt.Println("### trying to log in as", conn.User)
+	fmt.Println("### trying to log in as", conn.User, "at", apiEP)
 
 	loginMap := map[string]interface{}{
 		"user":     conn.User,
@@ -237,6 +239,104 @@ func (tt *Client) Subscribe(feedURL string, categoryID int, feedUsername string,
 	err = &SubscribeError{code, message}
 
 	didSubscribe = code == SUB_ADDED || code == SUB_ALREADY_ADDED
+	return
+}
+
+const Category = "category"
+const Feed = "feed"
+
+// FeedTreeItem represents an item in the feed tree returned by GetFeedTree.
+type FeedTreeItem struct {
+	ID int `json:"bare_ID"`
+	// Name is "/" when it is the synthetic root node.
+	Name string
+	// Type is either Category or Feed.
+	Type string
+	// LastError is present only if Type == "feed".
+	// If there is no error to report, it will be empty.
+	LastError string `json:"error"`
+	// Items is present only if Type == "category"
+	Items []FeedTreeItem
+}
+
+// See filepath.WalkFunc. This is similar, but no errors can occur while
+// walking an already-fetched tree. Use filepath.SkipDir to continue in the
+// current category but not recurse.
+type WalkFeedTreeFunc func(item *FeedTreeItem) error
+
+func WalkFeedTree(tree *FeedTreeItem, walkFn WalkFeedTreeFunc) error {
+	var err error
+	switch tree.Type {
+	case Category:
+		err = walkFn(tree)
+		if err != nil {
+			return err
+		}
+
+		for _, item := range tree.Items {
+			isCat := item.Type == Category
+			err = walkFn(&item)
+			if !isCat && err != filepath.SkipDir {
+				return err
+			}
+			if isCat {
+				err = WalkFeedTree(&item, walkFn)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	case Feed:
+		err = walkFn(tree)
+		if err != nil {
+			return err
+		}
+	}
+	return err
+}
+
+func (tt *Client) GetFeedTree(includeEmptyCategories bool) (root FeedTreeItem, err error) {
+	getMap := map[string]interface{} {
+		"include_empty": includeEmptyCategories,
+	}
+	resp, err := tt.Call("getFeedTree", getMap)
+	if err != nil {
+		return
+	}
+
+	if resp.Status != API_STATUS_OK {
+		err = fmt.Errorf("failed to get feed tree: API returned status",
+			resp.Status)
+		return
+	}
+
+	maybeCategories, ok := resp.Content["categories"]
+	if !ok {
+		err = fmt.Errorf("getFeedTree: content lacks categories key")
+		return
+	}
+
+	type jsonObject map[string]interface{}
+	categories, ok := maybeCategories.(jsonObject)
+	if !ok {
+		err = fmt.Errorf("getFeedTree: categories is not a JSON object: %#v",
+			maybeCategories)
+		return
+	}
+
+	maybeItems, ok := categories["items"]
+	if (!ok) {
+		err = fmt.Errorf("getFeedTree: categories has no items entry")
+		return
+	}
+
+	items, ok := maybeItems.([]jsonObject)
+	if !ok {
+		err = fmt.Errorf("getFeedTree: items is not a JSON array: %T", maybeItems)
+		return
+	}
+
+	err = fmt.Errorf("BUG: getting there: items %v", items)
 	return
 }
 

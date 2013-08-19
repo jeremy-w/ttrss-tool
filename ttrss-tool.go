@@ -32,6 +32,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"path/filepath"
 	"sort"
 	"strings"
 	"ttrss"
@@ -205,12 +206,16 @@ func (ln *Ln) Run(args []string) {
 
 	feed := ln.flags.Arg(0)
 	catpath := ln.flags.Arg(1)
-	categoryID, err := ResolveCatPath(catpath)
+	item, err := ResolveCatPath(catpath)
 	if err != nil {
 		log.Fatalln(err)
 	}
 
-	subscribed, err := tt.Subscribe(feed, categoryID, "", "")
+	if item.Type != ttrss.Category {
+		log.Fatalln("error: not a category:", catpath)
+	}
+
+	subscribed, err := tt.Subscribe(feed, item.ID, "", "")
 
 	if s, ok := err.(*ttrss.SubscribeError); ok {
 		if (s.Status != ttrss.SUB_ADDED) {
@@ -246,12 +251,27 @@ func (ls *Ls) Synopsis(w io.Writer) {
 }
 
 func (ls *Ls) Run(args []string) {
+	fmt.Println("### parsing `ls` args")
 	_ = ls.flags.Parse(args)
 	if ls.flHelp {
 		flagSetPrintUsage(ls.flags, os.Stdout, "ls")
 		return
 	}
-	fmt.Println("RUNNING LIST:", ls.flRecurse, ls.flags.Args())
+	fmt.Printf("### parsed: %#v\n", ls)
+
+	catpath := "/"
+	if len(args) > 0 {
+		catpath = args[0]
+	}
+
+	root, err := ResolveCatPath(catpath)
+	if err != nil {
+		log.Fatalf("unable to list %q: %v", catpath, err)
+	}
+
+	for _, item := range root.Items {
+		fmt.Println(item.Name)
+	}
 }
 
 func xdgConfigSearch(subpath string, onlyIfExists bool) (filePath string) {
@@ -355,7 +375,82 @@ func readPassword(r io.Reader, w io.Writer) (pass string, err error) {
 	}
 }
 
-func ResolveCatPath(catpath string) (catID int, err error) {
-	fmt.Fprintln(os.Stderr, "TODO: IMPLEMENT ResolveCatPath")
+func PathComponents(path string) (parts []string) {
+	// Trim initial slash; "/" is treated the same as "".
+	if strings.HasPrefix(path, "/") {
+		path = path[1:]
+	}
+
+	// Split into rough parts. This does NOT respect backslash escapes.
+	roughParts := strings.Split(path, "/")
+	fmt.Println(path, "=> roughly", roughParts)
+
+	// Now clean up rough parts to get the various levels.
+	partial := ""
+	for i := 0 ; i < len(roughParts)+1; i++ {
+		if i < len(roughParts) {
+			part := roughParts[i]
+			if strings.HasSuffix(part, "\\") {
+				partial += part[:len(part) - 1]
+				partial += "/"
+				continue
+			}
+			// No escape, so this is the end of a part.
+			partial += part
+		}
+		if partial != "" {
+			parts = append(parts, partial)
+			partial = ""
+		}
+	}
+	fmt.Println(path, "=>", parts)
+	return
+}
+
+type catPathResult struct {
+	item *ttrss.FeedTreeItem
+}
+
+func (err *catPathResult) Error() string {
+	return ""
+}
+
+func ResolveCatPath(catpath string) (item *ttrss.FeedTreeItem, err error) {
+	fmt.Println("### resolving", catpath)
+	parts := PathComponents(catpath)
+	tree, err := tt.GetFeedTree(true)
+	if err != nil {
+		return
+	}
+
+	walkParts := parts
+
+	/* Gradually eat walkParts till there are none left.
+	 * At that point, we've reached our category. */
+	walkFn := func(item *ttrss.FeedTreeItem) error {
+		fmt.Println("walk:", item.Name, item.Type, item.ID, "-", walkParts)
+		isCat := item.Type == ttrss.Category
+		if len(walkParts) == 0 {
+			return &catPathResult{item}
+		}
+
+		if item.Name == walkParts[0] {
+			walkParts = walkParts[1:len(walkParts)-1]
+			return nil
+		}
+
+		if isCat {
+			return filepath.SkipDir
+		}
+		return nil
+	}
+
+	err = ttrss.WalkFeedTree(&tree, walkFn)
+	result, ok := err.(*catPathResult)
+	if ok {
+		item = result.item
+		err = nil
+	}
+	err = fmt.Errorf("not found: %q", catpath)
 	return
 }
